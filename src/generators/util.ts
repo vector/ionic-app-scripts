@@ -36,7 +36,11 @@ export function hydrateTabRequest(context: BuildContext, request: GeneratorTabRe
 
   for (let i = 0; i < request.tabs.length; i++) {
     const tabVar = `${camelCase(request.tabs[i].name)}Root`;
-    hydrated.tabVariables += `  ${tabVar} = '${request.tabs[i].className}'\n`;
+    if (hydrated.includeNgModule ) {
+      hydrated.tabVariables += `  ${tabVar} = '${request.tabs[i].className}'\n`;
+    } else {
+      hydrated.tabVariables += `  ${tabVar} = ${request.tabs[i].className}\n`;
+    }
 
     // If this is the last ion-tab to insert
     // then we do not want a new line
@@ -174,16 +178,28 @@ export function tabsModuleManipulation(tabs: string[][], hydratedRequest: Hydrat
   const ngModulePath = tabs[0].find((element: any): boolean => {
     return element.indexOf('module') !== -1;
   });
-  const tabsNgModulePath = `${hydratedRequest.dirToWrite}${sep}${hydratedRequest.fileName}.module.ts`;
-  const importPath = toUnixPath(relative(dirname(tabsNgModulePath), ngModulePath.replace('.module.ts', '')));
+  if (ngModulePath) {
+    const tabsNgModulePath = `${hydratedRequest.dirToWrite}${sep}${hydratedRequest.fileName}.module.ts`;
+    const importPath = toUnixPath(relative(dirname(tabsNgModulePath), ngModulePath.replace('.module.ts', '')));
 
-  return readFileAsync(tabsNgModulePath).then((content) => {
+    return readFileAsync(tabsNgModulePath).then((content) => {
+      let fileContent = content;
+      fileContent = insertNamedImportIfNeeded(tabsNgModulePath, fileContent, tabHydratedRequests[0].className, importPath);
+      fileContent = appendNgModuleDeclaration(tabsNgModulePath, fileContent, tabHydratedRequests[0].className);
+
+      return writeFileAsync(tabsNgModulePath, fileContent);
+    });
+  } else {
+    const tabsPath = `${hydratedRequest.dirToWrite}${sep}${hydratedRequest.fileName}.ts`;
+    let file = tabs[0].find(element => element.indexOf('ts') !== -1);
+    const importPath = toUnixPath(relative(dirname(tabsPath), file.replace('.ts', '')));
+
+  return readFileAsync(tabsPath).then((content) => {
     let fileContent = content;
-    fileContent = insertNamedImportIfNeeded(tabsNgModulePath, fileContent, tabHydratedRequests[0].className, importPath);
-    fileContent = appendNgModuleDeclaration(tabsNgModulePath, fileContent, tabHydratedRequests[0].className);
-
-    return writeFileAsync(tabsNgModulePath, fileContent);
+    fileContent = insertNamedImportIfNeeded(tabsPath, fileContent, tabHydratedRequests[0].className, importPath);
+    return writeFileAsync(tabsPath, fileContent);
   });
+  }
 }
 
 export function generateTemplates(context: BuildContext, request: HydratedGeneratorRequest): Promise<string[]> {
