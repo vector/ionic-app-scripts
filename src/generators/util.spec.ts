@@ -101,7 +101,7 @@ describe('util', () => {
       // act
       const hydatedTabRequest = util.hydrateTabRequest(context, request);
       // assert
-      expect(hydatedTabRequest.tabVariables).toEqual('  moeRoot = \'MoePage\'\n')
+      expect(hydatedTabRequest.tabVariables).toEqual('  moeRoot = \'MoePage\'\n');
     });
 
     it('should take a page set the tab root to a component ref', () => {
@@ -129,7 +129,7 @@ describe('util', () => {
       // act
       const hydatedTabRequest = util.hydrateTabRequest(context, request);
       // assert
-      expect(hydatedTabRequest.tabVariables).toEqual('  moeRoot = MoePage\n')
+      expect(hydatedTabRequest.tabVariables).toEqual('  moeRoot = MoePage\n');
     });
   });
 
