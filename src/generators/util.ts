@@ -17,7 +17,7 @@ export function hydrateRequest(context: BuildContext, request: GeneratorRequest)
 
   hydrated.className = ensureSuffix(pascalCase(request.name), upperCaseFirst(suffix));
   hydrated.fileName = removeSuffix(paramCase(request.name), `-${paramCase(suffix)}`);
-  if (hydrated.includeNgModule) {
+  if (!!hydrated.includeNgModule) {
     if (hydrated.type === 'tabs') {
       hydrated.importStatement = `import { IonicPage, NavController, NavParams } from 'ionic-angular';`;
     } else {
@@ -197,12 +197,15 @@ export function nonPageFileManipulation(context: BuildContext, name: string, ngM
 }
 
 export function tabsModuleManipulation(tabs: string[][], hydratedRequest: HydratedGeneratorRequest, tabHydratedRequests: HydratedGeneratorRequest[]): Promise<any> {
+
   tabHydratedRequests.forEach((tabRequest, index) => {
     tabRequest.generatedFileNames = tabs[index];
   });
+
   const ngModulePath = tabs[0].find((element: any): boolean => {
     return element.indexOf('module') !== -1;
   });
+
   if (!ngModulePath) {
     // Static imports
     const tabsPath = join(hydratedRequest.dirToWrite, `${hydratedRequest.fileName}.ts`);
@@ -218,6 +221,7 @@ export function tabsModuleManipulation(tabs: string[][], hydratedRequest: Hydrat
       return writeFileAsync(tabsPath, modifiedContent);
     });
   }
+
 }
 
 export function generateTemplates(context: BuildContext, request: HydratedGeneratorRequest): Promise<string[]> {
