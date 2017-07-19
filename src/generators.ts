@@ -4,8 +4,8 @@ import { hydrateRequest, hydrateTabRequest, getNgModules, GeneratorOption, Gener
 
 export { getNgModules, GeneratorOption, GeneratorRequest };
 
-export function processPageRequest(context: BuildContext, name: string) {
-  const hydratedRequest = hydrateRequest(context, { type: 'page', name });
+export function processPageRequest(context: BuildContext, name: string, includeNgModule: boolean) {
+  const hydratedRequest = hydrateRequest(context, { type: 'page', name, includeNgModule });
   return generateTemplates(context, hydratedRequest);
 }
 
@@ -25,9 +25,9 @@ export function processProviderRequest(context: BuildContext, name: string, ngMo
   return nonPageFileManipulation(context, name, ngModulePath, 'provider');
 }
 
-export function processTabsRequest(context: BuildContext, name: string, tabs: string[]) {
-  const tabHydratedRequests = tabs.map((tab) => hydrateRequest(context, { type: 'page', name: tab }));
-  const hydratedRequest = hydrateTabRequest(context, { type: 'tabs', name, tabs: tabHydratedRequests });
+export function processTabsRequest(context: BuildContext, name: string, includeNgModule: boolean, tabs: any[]) {
+  const tabHydratedRequests = tabs.map((tab) => hydrateRequest(context, { type: 'page', name: tab, includeNgModule}));
+  const hydratedRequest = hydrateTabRequest(context, { type: 'tabs', name, includeNgModule, tabs: tabHydratedRequests });
 
   return generateTemplates(context, hydratedRequest).then(() => {
     const promises = tabHydratedRequests.map((hydratedRequest) => {
@@ -35,8 +35,7 @@ export function processTabsRequest(context: BuildContext, name: string, tabs: st
     });
 
     return Promise.all(promises);
-  })
-  .then((tabs) => {
+  }).then((tabs) => {
     tabsModuleManipulation(tabs, hydratedRequest, tabHydratedRequests);
   });
 }

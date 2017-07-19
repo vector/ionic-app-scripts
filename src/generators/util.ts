@@ -12,17 +12,28 @@ import { changeExtension, ensureSuffix, removeSuffix } from '../util/helpers';
 import { appendNgModuleDeclaration, insertNamedImportIfNeeded } from '../util/typescript-utils';
 
 export function hydrateRequest(context: BuildContext, request: GeneratorRequest) {
-  const hydrated = Object.assign({ includeNgModule: false }, request) as HydratedGeneratorRequest;
+  const hydrated = request as HydratedGeneratorRequest;
   const suffix = getSuffixFromGeneratorType(context, request.type);
 
   hydrated.className = ensureSuffix(pascalCase(request.name), upperCaseFirst(suffix));
   hydrated.fileName = removeSuffix(paramCase(request.name), `-${paramCase(suffix)}`);
+  if (hydrated.includeNgModule) {
+    if (hydrated.type === 'tabs') {
+      hydrated.importStatement = `import { IonicPage, NavController, NavParams } from 'ionic-angular';`;
+    } else {
+      hydrated.importStatement = `import { IonicPage, NavController, NavParams } from 'ionic-angular';`;
+    }
+    hydrated.ionicPage = '\n@IonicPage()';
+  } else {
 
+    hydrated.ionicPage = null;
+    hydrated.importStatement = `import { NavController, NavParams } from 'ionic-angular';`;
+
+  }
   hydrated.dirToRead = join(getStringPropertyValue(Constants.ENV_VAR_IONIC_ANGULAR_TEMPLATE_DIR), request.type);
 
   const baseDir = getDirToWriteToByType(context, request.type);
   hydrated.dirToWrite = join(baseDir, hydrated.fileName);
-
   return hydrated;
 }
 
@@ -31,11 +42,19 @@ export function hydrateTabRequest(context: BuildContext, request: GeneratorTabRe
   const hydrated = Object.assign({
     tabs: request.tabs,
     tabContent: '',
-    tabVariables: ''
+    tabVariables: '',
+    tabsImportStatement: '',
   }, h) as HydratedGeneratorRequest;
+
+  if (hydrated.includeNgModule ) {
+    hydrated.tabsImportStatement += `import { IonicPage, NavController } from 'ionic-angular';`;
+  } else {
+    hydrated.tabsImportStatement += `import { NavController } from 'ionic-angular';`;
+  }
 
   for (let i = 0; i < request.tabs.length; i++) {
     const tabVar = `${camelCase(request.tabs[i].name)}Root`;
+
     if (hydrated.includeNgModule ) {
       hydrated.tabVariables += `  ${tabVar} = '${request.tabs[i].className}'\n`;
     } else {
@@ -88,10 +107,13 @@ export function applyTemplates(request: HydratedGeneratorRequest, templates: Map
   const appliedTemplateMap = new Map<string, string>();
   templates.forEach((fileContent: string, filePath: string) => {
     fileContent = replaceAll(fileContent, GeneratorConstants.CLASSNAME_VARIABLE, request.className);
+    fileContent = replaceAll(fileContent, GeneratorConstants.IMPORTSTATEMENT_VARIABLE, request.importStatement);
+    fileContent = replaceAll(fileContent, GeneratorConstants.IONICPAGE_VARIABLE, request.ionicPage);
     fileContent = replaceAll(fileContent, GeneratorConstants.FILENAME_VARIABLE, request.fileName);
     fileContent = replaceAll(fileContent, GeneratorConstants.SUPPLIEDNAME_VARIABLE, request.name);
     fileContent = replaceAll(fileContent, GeneratorConstants.TAB_CONTENT_VARIABLE, request.tabContent);
     fileContent = replaceAll(fileContent, GeneratorConstants.TAB_VARIABLES_VARIABLE, request.tabVariables);
+    fileContent = replaceAll(fileContent, GeneratorConstants.TABS_IMPORTSTATEMENT_VARIABLE, request.tabsImportStatement);
     appliedTemplateMap.set(filePath, fileContent);
   });
   return appliedTemplateMap;
@@ -181,19 +203,7 @@ export function tabsModuleManipulation(tabs: string[][], hydratedRequest: Hydrat
   const ngModulePath = tabs[0].find((element: any): boolean => {
     return element.indexOf('module') !== -1;
   });
-  if (ngModulePath) {
-    const tabsNgModulePath = `${hydratedRequest.dirToWrite}${sep}${hydratedRequest.fileName}.module.ts`;
-    const importPath = toUnixPath(relative(dirname(tabsNgModulePath), ngModulePath.replace('.module.ts', '')));
-
-    return readFileAsync(tabsNgModulePath).then((content) => {
-      let fileContent = content;
-      fileContent = insertNamedImportIfNeeded(tabsNgModulePath, fileContent, tabHydratedRequests[0].className, importPath);
-      fileContent = appendNgModuleDeclaration(tabsNgModulePath, fileContent, tabHydratedRequests[0].className);
-
-      return writeFileAsync(tabsNgModulePath, fileContent);
-    });
-  } else {
-
+  if (!ngModulePath) {
     // Static imports
     const tabsPath = join(hydratedRequest.dirToWrite, `${hydratedRequest.fileName}.ts`);
 
@@ -241,9 +251,12 @@ export interface GeneratorTabRequest extends GeneratorRequest {
 
 export interface HydratedGeneratorRequest extends GeneratorRequest {
   fileName?: string;
+  importStatement?: string;
+  ionicPage?: string;
   className?: string;
   tabContent?: string;
   tabVariables?: string;
+  tabsImportStatement?: string;
   dirToRead?: string;
   dirToWrite?: string;
   generatedFileNames?: string[];
