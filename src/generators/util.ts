@@ -17,6 +17,9 @@ export function hydrateRequest(context: BuildContext, request: GeneratorRequest)
 
   hydrated.className = ensureSuffix(pascalCase(request.name), upperCaseFirst(suffix));
   hydrated.fileName = removeSuffix(paramCase(request.name), `-${paramCase(suffix)}`);
+
+  if (request.type === 'pipe') hydrated.pipeName = camelCase(request.name);
+
   if (!!hydrated.includeNgModule) {
     if (hydrated.type === 'tabs') {
       hydrated.importStatement = `import { IonicPage, NavController } from 'ionic-angular';`;
@@ -113,6 +116,7 @@ export function applyTemplates(request: HydratedGeneratorRequest, templates: Map
   const appliedTemplateMap = new Map<string, string>();
   templates.forEach((fileContent: string, filePath: string) => {
     fileContent = replaceAll(fileContent, GeneratorConstants.CLASSNAME_VARIABLE, request.className);
+    fileContent = replaceAll(fileContent, GeneratorConstants.PIPENAME_VARIABLE, request.pipeName);
     fileContent = replaceAll(fileContent, GeneratorConstants.IMPORTSTATEMENT_VARIABLE, request.importStatement);
     fileContent = replaceAll(fileContent, GeneratorConstants.IONICPAGE_VARIABLE, request.ionicPage);
     fileContent = replaceAll(fileContent, GeneratorConstants.FILENAME_VARIABLE, request.fileName);
@@ -280,4 +284,5 @@ export interface HydratedGeneratorRequest extends GeneratorRequest {
   dirToRead?: string;
   dirToWrite?: string;
   generatedFileNames?: string[];
+  pipeName?: string;
 }
