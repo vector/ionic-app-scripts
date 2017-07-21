@@ -1,6 +1,6 @@
 import { basename, dirname, extname, join, relative, sep } from 'path';
-import { readdirSync } from 'fs';
-import { Logger} from '../logger/logger';
+import { readdirSync, existsSync, writeFileSync, openSync, closeSync } from 'fs';
+import { Logger } from '../logger/logger';
 import { toUnixPath } from '../util/helpers';
 
 import * as Constants from '../util/constants';
@@ -9,7 +9,7 @@ import { camelCase, getStringPropertyValue, mkDirpAsync, paramCase, pascalCase, 
 import { BuildContext } from '../util/interfaces';
 import { globAll, GlobResult } from '../util/glob-util';
 import { changeExtension, ensureSuffix, removeSuffix } from '../util/helpers';
-import { appendNgModuleDeclaration, insertNamedImportIfNeeded } from '../util/typescript-utils';
+import { appendNgModuleDeclaration, appendNgModuleExports, appendNgModuleProvider, insertNamedImportIfNeeded } from '../util/typescript-utils';
 
 export function hydrateRequest(context: BuildContext, request: GeneratorRequest) {
   const hydrated = request as HydratedGeneratorRequest;
@@ -19,7 +19,7 @@ export function hydrateRequest(context: BuildContext, request: GeneratorRequest)
   hydrated.fileName = removeSuffix(paramCase(request.name), `-${paramCase(suffix)}`);
   if (!!hydrated.includeNgModule) {
     if (hydrated.type === 'tabs') {
-      hydrated.importStatement = `import { IonicPage, NavController, NavParams } from 'ionic-angular';`;
+      hydrated.importStatement = `import { IonicPage, NavController } from 'ionic-angular';`;
     } else {
       hydrated.importStatement = `import { IonicPage, NavController, NavParams } from 'ionic-angular';`;
     }
@@ -37,6 +37,12 @@ export function hydrateRequest(context: BuildContext, request: GeneratorRequest)
   return hydrated;
 }
 
+export function createCommonModule(envVar: string, requestType: string) {
+  let className = requestType.charAt(0).toUpperCase() + requestType.slice(1) + 's';
+  let tmplt = `import { NgModule } from '@angular/core';\n@NgModule({\n\tdeclarations: [],\n\timports: [],\n\texports: []\n})\nexport class ${className}Module {}\n`;
+  return writeFileAsync(envVar, tmplt);
+}
+
 export function hydrateTabRequest(context: BuildContext, request: GeneratorTabRequest) {
   const h = hydrateRequest(context, request);
   const hydrated = Object.assign({
@@ -46,7 +52,7 @@ export function hydrateTabRequest(context: BuildContext, request: GeneratorTabRe
     tabsImportStatement: '',
   }, h) as HydratedGeneratorRequest;
 
-  if (hydrated.includeNgModule ) {
+  if (hydrated.includeNgModule) {
     hydrated.tabsImportStatement += `import { IonicPage, NavController } from 'ionic-angular';`;
   } else {
     hydrated.tabsImportStatement += `import { NavController } from 'ionic-angular';`;
@@ -55,7 +61,7 @@ export function hydrateTabRequest(context: BuildContext, request: GeneratorTabRe
   for (let i = 0; i < request.tabs.length; i++) {
     const tabVar = `${camelCase(request.tabs[i].name)}Root`;
 
-    if (hydrated.includeNgModule ) {
+    if (hydrated.includeNgModule) {
       hydrated.tabVariables += `  ${tabVar} = '${request.tabs[i].className}'\n`;
     } else {
       hydrated.tabVariables += `  ${tabVar} = ${request.tabs[i].className}\n`;
@@ -129,6 +135,7 @@ export function writeGeneratedFiles(request: HydratedGeneratorRequest, processed
     createdFileList.push(fileToWrite);
     promises.push(createDirAndWriteFile(fileToWrite, fileContent));
   });
+
   return Promise.all(promises).then(() => {
     return createdFileList;
   });
@@ -177,22 +184,34 @@ export function getDirToWriteToByType(context: BuildContext, type: string) {
   throw new Error(`Unknown Generator Type: ${type}`);
 }
 
-export function nonPageFileManipulation(context: BuildContext, name: string, ngModulePath: string, type: string) {
+export async function nonPageFileManipulation(context: BuildContext, name: string, ngModulePath: string, type: string) {
   const hydratedRequest = hydrateRequest(context, { type, name });
+  const envVar = getStringPropertyValue(`IONIC_${hydratedRequest.type.toUpperCase()}S_NG_MODULE_PATH`);
+  let importPath;
   let fileContent: string;
-  return readFileAsync(ngModulePath).then((content) => {
-    fileContent = content;
-    return generateTemplates(context, hydratedRequest);
-  }).then(() => {
-    const importPath = toUnixPath(`${relative(dirname(ngModulePath), hydratedRequest.dirToWrite)}${sep}${hydratedRequest.fileName}`);
+  let templatesArray: string[] = await generateTemplates(context, hydratedRequest);
 
-    fileContent = insertNamedImportIfNeeded(ngModulePath, fileContent, hydratedRequest.className, importPath);
-    if (type === 'provider') {
-      fileContent = appendNgModuleDeclaration(ngModulePath, fileContent, hydratedRequest.className, type);
-    } else {
-      fileContent = appendNgModuleDeclaration(ngModulePath, fileContent, hydratedRequest.className);
+  if (!existsSync(envVar)) createCommonModule(envVar, hydratedRequest.type);
+
+  const typescriptFilePath = changeExtension(templatesArray.filter(path => extname(path) === '.ts')[0], '');
+
+
+  readFileAsync(ngModulePath).then((content) => {
+    importPath = type === 'pipe' || type === 'component' || type === 'directive'
+      // Insert `./` if it's a pipe component or directive
+      // Since these will go in a common module.
+      ? toUnixPath(`./${relative(dirname(ngModulePath), hydratedRequest.dirToWrite)}${sep}${hydratedRequest.fileName}`)
+      : toUnixPath(`${relative(dirname(ngModulePath), hydratedRequest.dirToWrite)}${sep}${hydratedRequest.fileName}`);
+
+    content = insertNamedImportIfNeeded(ngModulePath, content, hydratedRequest.className, importPath);
+    if (type === 'pipe' || type === 'component' || type === 'directive') {
+      content = appendNgModuleDeclaration(ngModulePath, content, hydratedRequest.className);
+      content = appendNgModuleExports(ngModulePath, content, hydratedRequest.className);
     }
-    return writeFileAsync(ngModulePath, fileContent);
+    if (type === 'provider') {
+      content = appendNgModuleProvider(ngModulePath, content, hydratedRequest.className);
+    }
+    return writeFileAsync(ngModulePath, content);
   });
 }
 
@@ -201,10 +220,7 @@ export function tabsModuleManipulation(tabs: string[][], hydratedRequest: Hydrat
   tabHydratedRequests.forEach((tabRequest, index) => {
     tabRequest.generatedFileNames = tabs[index];
   });
-
-  const ngModulePath = tabs[0].find((element: any): boolean => {
-    return element.indexOf('module') !== -1;
-  });
+  const ngModulePath = tabs[0].find((element: any): boolean => element.indexOf('module') !== -1);
 
   if (!ngModulePath) {
     // Static imports

@@ -94,13 +94,10 @@ describe('util', () => {
       // assert
       expect(hydratedRequest).toEqual({
         className: 'SettingsViewPage',
-        dirToRead:
-          '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/page',
-        dirToWrite:
-          '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/pages/settings-view',
+        dirToRead: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/page',
+        dirToWrite: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/pages/settings-view',
         fileName: 'settings-view',
-        importStatement:
-          "import { IonicPage, NavController, NavParams } from 'ionic-angular';",
+        importStatement: 'import { IonicPage, NavController, NavParams } from \'ionic-angular\';',
         includeNgModule: true,
         includeSpec: true,
         ionicPage: '\n@IonicPage()',
@@ -152,13 +149,10 @@ describe('util', () => {
       // assert
       expect(hydratedRequest).toEqual({
         className: 'AboutPage',
-        dirToRead:
-          '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/page',
-        dirToWrite:
-          '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/pages/about',
+        dirToRead: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/page',
+        dirToWrite: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/pages/about',
         fileName: 'about',
-        importStatement:
-          "import { NavController, NavParams } from 'ionic-angular';",
+        importStatement: 'import { NavController, NavParams } from \'ionic-angular\';',
         includeNgModule: false,
         includeSpec: true,
         ionicPage: null,
@@ -167,7 +161,7 @@ describe('util', () => {
       });
       expect(hydratedRequest.ionicPage).toEqual(null);
       expect(hydratedRequest.importStatement).toEqual(
-        "import { NavController, NavParams } from 'ionic-angular';"
+        'import { NavController, NavParams } from \'ionic-angular\';'
       );
       expect(hydratedRequest.type).toEqual(Constants.PAGE);
       expect(hydratedRequest.name).toEqual(request.name);
@@ -218,7 +212,7 @@ describe('util', () => {
       // act
       const hydatedTabRequest = util.hydrateTabRequest(context, request);
       // assert
-      expect(hydatedTabRequest.tabVariables).toEqual("  moeRoot = 'MoePage'\n");
+      expect(hydatedTabRequest.tabVariables).toEqual(`  moeRoot = 'MoePage'\n`);
     });
 
     it('should take a page set the tab root to a component ref', () => {
@@ -685,88 +679,4 @@ $TAB_CONTENT
     });
   });
 
-  describe('nonPageFileManipulation', () => {
-    const componentsDir = '/path/to/components';
-    const directivesDir = '/path/to/directives';
-    const pagesDir = '/path/to/pages';
-    const pipesDir = '/path/to/pipes';
-    const providersDir = '/path/to/providers';
-
-    const context = {
-      componentsDir,
-      directivesDir,
-      pagesDir,
-      pipesDir,
-      providersDir
-    };
-
-    beforeEach(() => {
-      const templateDir =
-        '/Users/noone/project/node_modules/ionic-angular/templates';
-      spyOn(helpers, helpers.getStringPropertyValue.name).and.returnValue(
-        templateDir
-      );
-    });
-
-    it('should return a succesful promise', () => {
-      // set up spies
-      spyOn(helpers, helpers.readFileAsync.name).and.returnValue(
-        Promise.resolve('file content')
-      );
-      spyOn(fs, 'readdirSync').and.returnValue([
-        '/path/to/nowhere',
-        'path/to/somewhere'
-      ]);
-      spyOn(helpers, helpers.writeFileAsync.name).and.returnValue(
-        Promise.resolve()
-      );
-      spyOn(helpers, helpers.mkDirpAsync.name).and.returnValue(
-        Promise.resolve()
-      );
-      spyOn(
-        TypeScriptUtils,
-        TypeScriptUtils.insertNamedImportIfNeeded.name
-      ).and.returnValue('file content');
-      spyOn(
-        TypeScriptUtils,
-        TypeScriptUtils.appendNgModuleDeclaration.name
-      ).and.returnValue('sliced string');
-
-      // what we want to test
-      const promise = util.nonPageFileManipulation(
-        context,
-        'coolStuff',
-        '/src/pages/cool-tab-one/cool-tab-one.module.ts',
-        'pipe'
-      );
-
-      // test
-      return promise.then(() => {
-        expect(helpers.readFileAsync).toHaveBeenCalled();
-        expect(helpers.writeFileAsync).toHaveBeenCalled();
-        expect(helpers.mkDirpAsync).toHaveBeenCalled();
-      });
-    });
-
-    it('should throw when files are not written succesfully', () => {
-      const knownErrorMsg = `ENOENT: no such file or directory, open 'src/pages/cool-tab-one/cool-tab-one.module.ts'`;
-      spyOn(helpers, helpers.writeFileAsync.name).and.returnValue(
-        Promise.reject(new Error(knownErrorMsg))
-      );
-
-      const promise = util.nonPageFileManipulation(
-        context,
-        'coolStuff',
-        join('src', 'pages', 'cool-tab-one', 'cool-tab-one.module.ts'),
-        'pipe'
-      );
-      return promise
-        .then(() => {
-          throw new Error('should never happen');
-        })
-        .catch((err: Error) => {
-          expect(err.message).toEqual(knownErrorMsg);
-        });
-    });
-  });
 });
