@@ -5,7 +5,7 @@ import { toUnixPath } from '../util/helpers';
 
 import * as Constants from '../util/constants';
 import * as GeneratorConstants from './constants';
-import { camelCase, getStringPropertyValue, mkDirpAsync, paramCase, pascalCase, readFileAsync, replaceAll, sentenceCase, upperCaseFirst, writeFileAsync } from '../util/helpers';
+import { camelCase, constantCase, getStringPropertyValue, mkDirpAsync, paramCase, pascalCase, readFileAsync, replaceAll, sentenceCase, upperCaseFirst, writeFileAsync } from '../util/helpers';
 import { BuildContext } from '../util/interfaces';
 import { globAll, GlobResult } from '../util/glob-util';
 import { changeExtension, ensureSuffix, removeSuffix } from '../util/helpers';
@@ -193,7 +193,7 @@ export async function nonPageFileManipulation(context: BuildContext, name: strin
   const envVar = getStringPropertyValue(`IONIC_${hydratedRequest.type.toUpperCase()}S_NG_MODULE_PATH`);
   let importPath;
   let fileContent: string;
-  let templatesArray: string[] = await generateTemplates(context, hydratedRequest);
+  let templatesArray: string[] = await generateTemplates(context, hydratedRequest, false);
 
   if (!existsSync(envVar)) createCommonModule(envVar, hydratedRequest.type);
 
@@ -244,17 +244,41 @@ export function tabsModuleManipulation(tabs: string[][], hydratedRequest: Hydrat
 
 }
 
-export function generateTemplates(context: BuildContext, request: HydratedGeneratorRequest): Promise<string[]> {
+export function generateTemplates(context: BuildContext, request: HydratedGeneratorRequest, includePageConstants: any): Promise<string[]> {
   Logger.debug('[Generators] generateTemplates: Reading templates ...');
+
+  let pageConstantFile = join(context.pagesDir, 'pages.constants.ts');
+  if (includePageConstants && !existsSync(pageConstantFile)) createPageConstants(context);
+
   return readTemplates(request.dirToRead).then((map: Map<string, string>) => {
+
     Logger.debug('[Generators] generateTemplates: Filtering out NgModule and Specs if needed ...');
     return filterOutTemplates(request, map);
+
   }).then((filteredMap: Map<string, string>) => {
+
     Logger.debug('[Generators] generateTemplates: Applying templates ...');
     const appliedTemplateMap = applyTemplates(request, filteredMap);
+
     Logger.debug('[Generators] generateTemplates: Writing generated files to disk ...');
+
+    // Adding const to gets some type completion
+    if (includePageConstants) createConstStatments(pageConstantFile, request);
+
     return writeGeneratedFiles(request, appliedTemplateMap);
   });
+}
+
+export function createConstStatments(pageConstantFile: string, request: HydratedGeneratorRequest) {
+  readFileAsync(pageConstantFile).then((content) => {
+    content += `\nexport const ${constantCase(request.className)} = '${request.className}';`;
+    writeFileAsync(pageConstantFile, content);
+  });
+}
+
+export function createPageConstants(context: BuildContext) {
+  let pageConstantFile = join(context.pagesDir, 'pages.constants.ts');
+  writeFileAsync(pageConstantFile, '//Constants for getting type references');
 }
 
 export interface GeneratorOption {

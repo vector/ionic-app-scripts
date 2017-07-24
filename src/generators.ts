@@ -4,9 +4,9 @@ import { hydrateRequest, hydrateTabRequest, getNgModules, GeneratorOption, Gener
 
 export { getNgModules, GeneratorOption, GeneratorRequest };
 
-export function processPageRequest(context: BuildContext, name: string, includeNgModule: any) {
+export function processPageRequest(context: BuildContext, name: string, includeNgModule: any, includePageConstants: any) {
   const hydratedRequest = hydrateRequest(context, { type: 'page', name, includeNgModule });
-  return generateTemplates(context, hydratedRequest);
+  return generateTemplates(context, hydratedRequest, includePageConstants);
 }
 
 export function processPipeRequest(context: BuildContext, name: string, ngModulePath: string) {
@@ -25,13 +25,13 @@ export function processProviderRequest(context: BuildContext, name: string, ngMo
   return nonPageFileManipulation(context, name, ngModulePath, 'provider');
 }
 
-export function processTabsRequest(context: BuildContext, name: string, tabs: any[], includeNgModule: any ) {
+export function processTabsRequest(context: BuildContext, name: string, tabs: any[], includeNgModule: any, includePageConstants: any) {
   const tabHydratedRequests = tabs.map((tab) => hydrateRequest(context, { type: 'page', name: tab, includeNgModule}));
   const hydratedRequest = hydrateTabRequest(context, { type: 'tabs', name, includeNgModule, tabs: tabHydratedRequests });
 
-  return generateTemplates(context, hydratedRequest).then(() => {
+  return generateTemplates(context, hydratedRequest, includePageConstants).then(() => {
     const promises = tabHydratedRequests.map((hydratedRequest) => {
-      return generateTemplates(context, hydratedRequest);
+      return generateTemplates(context, hydratedRequest, includePageConstants);
     });
 
     return Promise.all(promises);
