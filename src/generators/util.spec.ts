@@ -40,8 +40,8 @@ describe('util', () => {
       // assert
       expect(hydratedRequest).toEqual({
         className: 'SettingsViewComponent',
-        dirToRead: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/component',
-        dirToWrite: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/components/settings-view',
+        dirToRead: join(templateDir, 'component'),
+        dirToWrite: join(componentsDir, 'settings-view'),
         fileName: 'settings-view',
         importStatement: 'import { IonicPage, NavController, NavParams } from \'ionic-angular\';',
         includeNgModule: true,
@@ -94,8 +94,8 @@ describe('util', () => {
       // assert
       expect(hydratedRequest).toEqual({
         className: 'SettingsViewPage',
-        dirToRead: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/page',
-        dirToWrite: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/pages/settings-view',
+        dirToRead: join(templateDir, 'page'),
+        dirToWrite: join(pagesDir, 'settings-view'),
         fileName: 'settings-view',
         importStatement: 'import { IonicPage, NavController, NavParams } from \'ionic-angular\';',
         includeNgModule: true,
@@ -149,8 +149,8 @@ describe('util', () => {
       // assert
       expect(hydratedRequest).toEqual({
         className: 'AboutPage',
-        dirToRead: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/node_modules/ionic-angular/templates/page',
-        dirToWrite: '/Users/mhartington/GitHub/ionic-app-scripts/someDir/project/src/pages/about',
+        dirToRead: join(templateDir, 'page'),
+        dirToWrite: join(pagesDir, 'about'),
         fileName: 'about',
         importStatement: 'import { NavController, NavParams } from \'ionic-angular\';',
         includeNgModule: false,
