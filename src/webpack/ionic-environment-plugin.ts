@@ -19,13 +19,13 @@ export class IonicEnvironmentPlugin {
         compiler.resolvers.normal = {fileSystem: compiler.inputFileSystem};
       }
 
-      if (compiler.resolvers.normal) {
+      if (compiler.resolvers.context) {
         compiler.resolvers.context.fileSystem = compiler.inputFileSystem;
       } else {
         compiler.resolvers.context = {fileSystem: compiler.inputFileSystem};
       }
 
-      if (compiler.resolvers.normal) {
+      if (compiler.resolvers.loader) {
         compiler.resolvers.loader.fileSystem = compiler.inputFileSystem;
       } else {
         compiler.resolvers.loader = {fileSystem: compiler.inputFileSystem};
