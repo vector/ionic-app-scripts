@@ -12,9 +12,24 @@ export class IonicEnvironmentPlugin {
       Logger.debug('[IonicEnvironmentPlugin] apply: creating environment plugin');
       const hybridFileSystem = new HybridFileSystem(this.fileCache, compiler.inputFileSystem);
       compiler.inputFileSystem = hybridFileSystem;
-      compiler.resolvers.normal.fileSystem = compiler.inputFileSystem;
-      compiler.resolvers.context.fileSystem = compiler.inputFileSystem;
-      compiler.resolvers.loader.fileSystem = compiler.inputFileSystem;
+
+      if (compiler.resolvers.normal) {
+        compiler.resolvers.normal.fileSystem = compiler.inputFileSystem;
+      } else {
+        compiler.resolvers.normal = {fileSystem: compiler.inputFileSystem};
+      }
+
+      if (compiler.resolvers.normal) {
+        compiler.resolvers.context.fileSystem = compiler.inputFileSystem;
+      } else {
+        compiler.resolvers.context = {fileSystem: compiler.inputFileSystem};
+      }
+
+      if (compiler.resolvers.normal) {
+        compiler.resolvers.loader.fileSystem = compiler.inputFileSystem;
+      } else {
+        compiler.resolvers.loader = {fileSystem: compiler.inputFileSystem};
+      }
 
       // TODO - we can set-up the output file system here for in-memory serving
       compiler.watchFileSystem = new WatchMemorySystem(this.fileCache);
